@@ -1,6 +1,11 @@
 import qualified Data.ByteString.Char8 as C
+
+-- import Data.Map (Map)
 import Data.Map.Strict (Map)
+-- import qualified Data.Map as Map
 import qualified Data.Map.Strict as Map
+
+import Data.List (foldl')
 
 -- Every node contains number, cost and list of subtrees
 data Tree = Node Int Integer [Tree]
@@ -27,6 +32,8 @@ getChildrenMap lst = aux lst Map.empty 1
         aux ((_c, parent):xs) m i = aux xs m' (i+1)
             where m' = Map.insertWith (\new old -> head new : old) parent [i] m
 
+
+-- TODO very slow
 getSum :: Tree -> Map Int Integer -> (Integer, Map Int Integer)
 getSum (Node n c ts) mp = 
     if Map.member n mp then (Map.findWithDefault 0 n mp, mp)
@@ -36,6 +43,12 @@ getSum (Node n c ts) mp =
             foldFunc (s', mp'') t = (s' + s'', mp''')
                 where
                     (s'', mp''') = getSum t mp''
+
+
+-- LAZY?
+-- getSum :: Tree -> Integer
+-- getSum (Node _ c []) = c
+-- getSum (Node _ c ts) = c + sum (map getSum ts)
 
 
 getNeighborsMax :: Tree -> Integer -> Map Int Integer -> Integer
@@ -62,7 +75,7 @@ main = do
     rest <- C.getContents
     let listToTuple [a,b] = (maybe 0 fst (C.readInteger a), maybe 0 fst (C.readInt b))
         lists = [listToTuple l | l <- map C.words (C.lines rest), length l == 2] 
-    print $ solve (getTree lists)
+    print $ solve $ getTree lists
 
 --delete
 -- t = getTree [(10,3),(10,0),(10,2),(20,3),(20,4)]
