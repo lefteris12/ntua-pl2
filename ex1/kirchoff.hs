@@ -3,6 +3,7 @@ import qualified Data.Vector.Mutable as MV
 import qualified Data.Vector as IV
 import Data.Vector ( (!) )
 import Control.Monad ( forM_ )
+import Data.List ( foldl' )
 
 listToTuple :: [C.ByteString] -> (Integer, Int)
 listToTuple [a, b] = cost `seq` parent `seq` (cost, parent)
@@ -22,24 +23,25 @@ readInput n = do
         c `seq` MV.write costs i c
         p `seq` MV.modify tree (i :) p
         ))
-    t <- IV.freeze tree
-    c <- IV.freeze costs
+    t <- IV.unsafeFreeze tree
+    c <- IV.unsafeFreeze costs
     return (t, c)
 
-solve t c overall_sum = snd (snd (aux root 0))
+solve :: IV.Vector [Int] -> IV.Vector Integer -> Integer -> Int
+solve t c overall_sum = overall_sum `seq` snd (snd (aux root))
     where
         root = head (t!0)
-        aux n acc = (sum_curr, r)
+        aux n = sum_curr `seq` r `seq` (sum_curr, r)
             where
-                new_acc = acc + c!n
-                (sums, rs) = unzip (map (\x -> aux x new_acc) (t!n))
-                
-                sum_children = sum sums
+                (sum_children, max_sum, min_rs) = foldl' update (0, -1, (overall_sum, -1)) (t!n)
+                update (pr_s, pr_m_s, pr_r) child = (pr_s + s, max pr_m_s s, min pr_r r) 
+                    where (s, r) = aux child
+
                 sum_curr = sum_children + c!n
                 sum_above = overall_sum - sum_curr
 
-                current_r = (maximum (sum_above:sums), n)
-                r = minimum (current_r:rs)
+                current_r = (max max_sum sum_above, n)
+                r = current_r `seq` min min_rs current_r
 
 main :: IO ()
 main = do
