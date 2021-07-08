@@ -1,6 +1,5 @@
 -module(rally).
--export([rally/3, test/0]).
--compile(export_all).
+-export([rally/3]).
 
 -include_lib("proper/include/proper.hrl").
 -include_lib("eunit/include/eunit.hrl").
@@ -175,7 +174,6 @@ add_all_edges(G, Curr, Length, A, B, T) ->
 get_num_steps_correct(A, B, T) ->
     G = to_graph(A, B, T),
     length(digraph:get_short_path(G, {-1, 0}, {-3,0})) - 1.
-
 
 prop_correct_bfs() -> 
     ?FORALL([A, B, T], [integer_10to240(), integer_10to240(), generate_track()], rally(A, B, T) =:= get_num_steps_correct(A, B, T)).

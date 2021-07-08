@@ -1,8 +1,9 @@
 -module(bughunt).
--export([test/1]).
--compile(export_all).
+-export([test/1, test_all/0]).
 
 -include_lib("proper/include/proper.hrl").
+
+%% TYPES
 
 -type vector()    :: [integer(),...].
 -type expr()      :: vector()
@@ -14,6 +15,7 @@
 -type scalar_op() :: 'mul' | 'div'.
 -type norm_op()   :: 'norm_one' | 'norm_inf'.
 
+%% MY EVALUATOR
 
 -spec evaluate(expr()) -> vector() | 'error'.
 evaluate(E) ->
@@ -79,8 +81,9 @@ v_mul(I, V) -> [X * I || X <- V].
 v_div(I, _) when I =:= 0 -> throw(error);
 v_div(I, V) -> [X div I || X <- V].
 
-% PROPERTIES
+%% PROPERTIES
 
+% Calls the evaluator X under test catching any exception
 call_vector(X, Input) ->
     try
         (vectors:vector(X))(Input)
@@ -88,20 +91,7 @@ call_vector(X, Input) ->
         _:_ -> 'crash'
     end.
 
-% expr(0) -> vector(3, integer());
-% expr(Levels) ->
-%     union([expr1(Levels), expr2(Levels)]).
-
-% expr1(Levels) ->
-%     ?LET(Op, union(['add', 'sub', 'dot']), {Op, expr(Levels-1), expr(Levels-1)}).
-
-% expr2(Levels) -> 
-%     ?LET(ScalarOp, union(['mul', 'div']), {ScalarOp, int_expr(Levels-1), expr(Levels-1)}).
-
-% int_expr(0) -> integer();
-% int_expr(Levels) -> 
-%     ?LET(Norm, union(['norm_one', 'norm_inf']), {Norm, expr(Levels-1)}).
-
+% Used to create nested expressions with given Levels 
 expr(0) -> vector(3, integer());
 expr(Levels) ->
     union([expr1(Levels), expr2(Levels)]).
@@ -116,17 +106,18 @@ int_expr(0) -> integer();
 int_expr(Levels) -> 
     ?LET(Norm, union(['norm_one', 'norm_inf']), {Norm, expr(Levels-1)}).
 
+% Generate an expression with two vectors and an operator
 vec_op(Op, SameSize) ->
     case SameSize of
         true -> ?LET(I, range(0, 200), {Op, vector(I, integer()), vector(I, integer())});
         false -> ?LET({I, J}, {range(0, 200), range(0, 200)}, {Op, vector(I, integer()), vector(J, integer())})
     end.
 
-
-
+% Generate one vector with size in range (Hi, Lo)
 vec(Hi, Lo) ->
     ?LET(I, range(Hi, Lo), vector(I, integer())).
 
+% The properties along with a comment explaining the bug
 all_props(X) ->
     [
         {?FORALL(Input, vec(100, 200), call_vector(X, Input) =:= evaluate(Input)), "Vector with >100 elements"},
@@ -151,30 +142,19 @@ all_props(X) ->
         {?FORALL(Input, ?LET(Levels, range(1, 10), expr(Levels)), call_vector(X, Input) =:= evaluate(Input)), "Nested expression"}
     ].
 
-% test(_, []) ->
-%     'correct';
-% ORIGINAL
-% test(X, [{Prop, Comment}|Props]) -> 
-%     Y = proper:quickcheck(Prop, [quiet]),
-%     case Y of 
-%         false -> Input = lists:last(proper:counterexample()), {Input, evaluate(Input), call_vector(X, Input), Comment};
-%         true -> test(X, Props)
-%     end.
-%TODO: JUST FOR TESTING
 test(_, []) ->
-    io:format("correct~n");
+    'correct';
 test(X, [{Prop, Comment}|Props]) -> 
     Y = proper:quickcheck(Prop, [quiet, {numtests, 1000}]),
     case Y of 
-        false -> Comment;
+        false -> Input = lists:last(proper:counterexample()), {Input, evaluate(Input), call_vector(X, Input), Comment};
         true -> test(X, Props)
     end.
 
+% The main function that tests evaluator X
 test(X) ->
     test(X, all_props(X)).
 
+% Tests all evaluators
 test_all() ->
     lists:foreach(fun(X) -> io:format("Evaluator ~p: ~p~n", [X, test(X)]) end, lists:seq(1, 50)).
-
-% test_all() ->
-%     lists:foreach(fun(X) -> test(X) end, lists:seq(1, 50)).
